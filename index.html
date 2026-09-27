@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>字体工坊</title>
+<style>
+:root {
+  --bg: #fafafa; --card: #fff; --border: #e8e8e8; --border-s: #d4d4d4;
+  --txt: #222; --txt2: #666; --txt3: #999;
+  --accent: #c05080; --accent-bg: #fdf2f5;
+  --radius: 10px;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { background:var(--bg); font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif; color:var(--txt); -webkit-font-smoothing:antialiased; }
+.wrap { max-width:960px; margin:0 auto; padding:28px 16px 60px; }
+
+header { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; padding:0 2px; }
+header h1 { font-size:20px; font-weight:600; letter-spacing:1px; }
+header span { font-size:12px; color:var(--txt3); letter-spacing:0.5px; }
+
+.grid-2 { display:grid; grid-template-columns:320px 1fr; gap:16px; align-items:start; }
+@media(max-width:720px){ .grid-2{grid-template-columns:1fr;} }
+
+.sidebar { display:flex; flex-direction:column; gap:14px; }
+.panel {
+  background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+  padding:14px 16px; transition:border-color 0.15s;
+}
+.panel:hover { border-color:var(--border-s); }
+.panel h3 {
+  font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1.5px;
+  color:var(--txt3); margin-bottom:10px;
+}
+
+textarea {
+  width:100%; min-height:56px; border:1px solid var(--border); border-radius:8px;
+  padding:10px 12px; font-size:15px; font-family:inherit; color:var(--txt); resize:vertical;
+  outline:none; transition:border-color 0.15s;
+}
+textarea:focus { border-color:var(--accent); }
+textarea::placeholder { color:#ccc; }
+
+.control-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.control-row:last-child { margin-bottom:0; }
+.control-row label { font-size:12px; color:var(--txt2); min-width:56px; flex-shrink:0; }
+.control-row input[type=range] { flex:1; accent-color:var(--accent); height:4px; }
+.control-row .val { font-size:11px; color:var(--txt3); min-width:28px; text-align:right; font-variant-numeric:tabular-nums; }
+
+.layout-pills { display:flex; flex-wrap:wrap; gap:6px; }
+.layout-pill {
+  padding:5px 12px; border-radius:18px; border:1px solid var(--border);
+  background:var(--card); color:var(--txt2); font-size:11px; cursor:pointer;
+  transition:all 0.12s; letter-spacing:0.3px;
+}
+.layout-pill:hover { border-color:var(--accent); color:var(--accent); }
+.layout-pill.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+.color-row { display:flex; flex-wrap:wrap; gap:6px; }
+.swatch {
+  width:24px; height:24px; border-radius:50%; cursor:pointer;
+  border:2px solid transparent; transition:transform 0.12s;
+  box-shadow:0 0 0 1px rgba(0,0,0,0.08) inset;
+}
+.swatch:hover { transform:scale(1.15); }
+.swatch.active { border-color:var(--txt); }
+
+.deco-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; }
+.deco-item {
+  aspect-ratio:1; border:1px solid var(--border); border-radius:8px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; padding:6px;
+  transition:all 0.12s; background:var(--card);
+}
+.deco-item:hover { border-color:var(--accent); background:var(--accent-bg); }
+.deco-item svg { width:100%; height:100%; }
+
+.deco-chips { display:flex; flex-wrap:wrap; gap:4px; min-height:24px; }
+.deco-chip {
+  display:inline-flex; align-items:center; gap:4px; padding:2px 8px 2px 4px;
+  border-radius:12px; background:#f5f5f5; border:1px solid var(--border); font-size:10px; color:var(--txt2);
+}
+.deco-chip svg { width:16px; height:16px; }
+.deco-chip .rm { cursor:pointer; font-weight:700; color:var(--txt3); margin-left:2px; }
+.deco-chip .rm:hover { color:var(--accent); }
+
+.main-stage {
+  background:var(--stage-bg, #ffffff);
+  border:1px solid var(--border); border-radius:var(--radius);
+  min-height:400px; display:flex; align-items:center; justify-content:center;
+  padding:32px; position:relative; overflow:hidden;
+  transition:background 0.2s;
+}
+#stage {
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+  gap:var(--gap, 4px); transition:gap 0.12s;
+}
+#stage.layout-stack { flex-direction:column; }
+#stage.layout-arc, #stage.layout-circle, #stage.layout-wave, #stage.layout-scatter, #stage.layout-free {
+  position:relative; width:100%; height:340px;
+}
+#stage.layout-free .glyph { cursor:grab; }
+#stage.layout-free .glyph:active { cursor:grabbing; }
+#stage.layout-free .glyph.dragging { z-index:10; }
+
+.glyph { display:inline-block; transition:transform 0.12s; }
+.glyph svg { display:block; }
+
+.actions { display:flex; gap:8px; margin-top:14px; justify-content:flex-end; }
+.btn {
+  padding:8px 18px; border-radius:20px; font-size:12px; cursor:pointer;
+  border:1px solid var(--border); background:var(--card); color:var(--txt2);
+  transition:all 0.12s; font-weight:500;
+}
+.btn:hover { border-color:var(--accent); color:var(--accent); }
+.btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+.btn.primary:hover { background:#a84470; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>字体工坊</h1>
+    <span>Pink Pill Type · 圆角胶囊网格字体排版工具</span>
+  </header>
+
+  <div class="grid-2">
+    <div class="sidebar">
+
+      <div class="panel">
+        <h3>文字内容</h3>
+        <textarea id="textInput" placeholder="输入字母、数字、标点…">LUNE</textarea>
+      </div>
+
+      <div class="panel">
+        <h3>参数调节</h3>
+        <div class="control-row"><label>字号</label><input type="range" id="sizeSlider" min="20" max="120" value="52"><span class="val" id="sizeVal">52</span></div>
+        <div class="control-row"><label>间距</label><input type="range" id="gapSlider" min="-8" max="36" value="4"><span class="val" id="gapVal">4</span></div>
+        <div class="control-row"><label>旋转</label><input type="range" id="jitterSlider" min="0" max="30" value="0"><span class="val" id="jitterVal">0</span></div>
+        <div class="control-row"><label>缩放随机</label><input type="range" id="scaleJitterSlider" min="0" max="50" value="0"><span class="val" id="scaleJitterVal">0</span></div>
+      </div>
+
+      <div class="panel">
+        <h3>排版方式</h3>
+        <div class="layout-pills" id="layoutBtns">
+          <button class="layout-pill active" data-layout="flow">自然排列</button>
+          <button class="layout-pill" data-layout="stack">竖排</button>
+          <button class="layout-pill" data-layout="arc">拱形</button>
+          <button class="layout-pill" data-layout="circle">环形</button>
+          <button class="layout-pill" data-layout="wave">波浪</button>
+          <button class="layout-pill" data-layout="scatter">散布</button>
+          <button class="layout-pill" data-layout="free">自由拖动</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>字体颜色</h3>
+        <div class="color-row" id="colorSwatches"></div>
+      </div>
+
+      <div class="panel">
+        <h3>背景色</h3>
+        <div class="color-row" id="bgSwatches"></div>
+      </div>
+
+      <div class="panel">
+        <h3>装饰图案</h3>
+        <div class="deco-grid" id="decoGrid"></div>
+        <div style="margin-top:8px;"><div class="deco-chips" id="decoChips"></div></div>
+      </div>
+
+    </div>
+
+    <div>
+      <div class="main-stage" id="canvasPanel">
+        <div id="stage"></div>
+      </div>
+      <p id="freeHint" style="display:none;font-size:11px;color:var(--txt3);margin-top:8px;text-align:center;">拖动画布里的字母和图案，自由摆放位置</p>
+      <div class="actions">
+        <button class="btn" id="shuffleBtn">随机排版</button>
+        <button class="btn" id="resetBtn">重置</button>
+        <button class="btn primary" id="downloadBtn">下载 PNG</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Pink Pill Type — 圆角胶囊网格字体（对照手绘PDF重新校准）
+// 网格：col,row 从0开始。大写占0-5行(6行高)，小写主体2-5行
+// 笔画粗，圆角大，接近手绘的胖胶囊感
+
+const GRID = 8;
+const UNIT = 16;
+function cap(col,row,w,h){ return {col,row,w:w||1,h:h||1}; }
+
+const GLYPHS = {
+  // ===== 大写 =====
+  'A': { width:5, caps:[ cap(0,1,1,5), cap(4,1,1,5), cap(1,0,3,1), cap(1,3,3,1) ]},
+  'B': { width:5, caps:[ cap(0,0,2,6), cap(2,0,2,1), cap(4,1,1,1), cap(2,2,2,1), cap(4,3,1,2), cap(2,5,2,1) ]},
+  'C': { width:5, caps:[ cap(0,1,2,4), cap(1,0,3,1), cap(1,5,3,1), cap(4,1,1,1), cap(4,4,1,1) ]},
+  'D': { width:5, caps:[ cap(0,0,2,6), cap(2,0,2,1), cap(4,1,1,4), cap(2,5,2,1) ]},
+  'E': { width:5, caps:[ cap(0,0,2,6), cap(2,0,3,1), cap(2,2,2,2), cap(2,5,3,1) ]},
+  'F': { width:5, caps:[ cap(0,0,2,6), cap(2,0,3,1), cap(2,2,2,2) ]},
+  'G': { width:5, caps:[ cap(0,1,2,4), cap(1,0,3,1), cap(1,5,3,1), cap(4,3,1,2), cap(3,3,1,1) ]},
+  'H': { width:5, caps:[ cap(0,0,2,6), cap(3,0,2,6), cap(1,2,3,1) ]},
+  'I': { width:2, caps:[ cap(0,0,2,6) ]},
+  'J': { width:4, caps:[ cap(2,0,2,5), cap(0,4,2,2), cap(1,5,2,1) ]},
+  'K': { width:5, caps:[ cap(0,0,2,6), cap(3,0,2,2), cap(2,2,2,2), cap(3,4,2,2) ]},
+  'L': { width:4, caps:[ cap(0,0,2,6), cap(2,5,2,1) ]},
+  'M': { width:6, caps:[ cap(0,0,2,6), cap(4,0,2,6), cap(2,1,1,3), cap(3,1,1,3) ]},
+  'N': { width:5, caps:[ cap(0,0,2,6), cap(3,0,2,6), cap(1,1,1,2), cap(2,2,1,2), cap(2,3,1,1) ]},
+  'O': { width:5, caps:[ cap(0,1,2,4), cap(3,1,2,4), cap(1,0,3,1), cap(1,5,3,1) ]},
+  'P': { width:5, caps:[ cap(0,0,2,6), cap(2,0,2,1), cap(4,1,1,1), cap(2,2,2,1) ]},
+  'Q': { width:5, caps:[ cap(0,1,2,4), cap(3,1,2,3), cap(1,0,3,1), cap(1,5,2,1), cap(3,4,2,2) ]},
+  'R': { width:5, caps:[ cap(0,0,2,6), cap(2,0,2,1), cap(4,1,1,1), cap(2,2,2,1), cap(3,3,2,3) ]},
+  'S': { width:5, caps:[ cap(1,0,3,1), cap(0,1,2,1), cap(1,2,3,1), cap(3,3,2,1), cap(1,5,3,1), cap(0,4,2,1) ]},
+  'T': { width:5, caps:[ cap(0,0,5,1), cap(2,0,1,6) ]},
+  'U': { width:5, caps:[ cap(0,0,2,5), cap(3,0,2,5), cap(1,5,3,1) ]},
+  'V': { width:5, caps:[ cap(0,0,2,4), cap(3,0,2,4), cap(1,4,3,1), cap(2,5,1,1) ]},
+  'W': { width:6, caps:[ cap(0,0,2,6), cap(4,0,2,6), cap(2,4,1,2), cap(3,4,1,2) ]},
+  'X': { width:5, caps:[ cap(0,0,2,2), cap(3,0,2,2), cap(2,2,1,2), cap(0,4,2,2), cap(3,4,2,2) ]},
+  'Y': { width:5, caps:[ cap(0,0,2,2), cap(3,0,2,2), cap(2,2,1,4) ]},
+  'Z': { width:5, caps:[ cap(0,0,5,1), cap(3,1,1,1), cap(2,2,1,2), cap(1,3,1,1), cap(0,5,5,1) ]},
+
+  // ===== 小写：主体2-5行，上伸到0行，下伸到7行 =====
+  'a': { width:4, caps:[ cap(1,2,2,1), cap(0,3,2,2), cap(3,2,1,4), cap(1,5,2,1) ]},
+  'b': { width:4, caps:[ cap(0,0,2,6), cap(2,2,2,1), cap(3,3,1,2), cap(2,5,2,1) ]},
+  'c': { width:4, caps:[ cap(0,3,2,2), cap(1,2,3,1), cap(1,5,3,1) ]},
+  'd': { width:4, caps:[ cap(2,0,2,6), cap(0,2,2,1), cap(0,3,1,2), cap(0,5,2,1) ]},
+  'e': { width:4, caps:[ cap(0,3,2,2), cap(1,2,3,1), cap(3,3,1,1), cap(0,4,4,1), cap(1,5,3,1) ]},
+  'f': { width:4, caps:[ cap(1,0,2,6), cap(0,2,4,1), cap(2,0,1,1) ]},
+  'g': { width:4, caps:[ cap(0,2,2,3), cap(1,2,2,1), cap(3,2,1,5), cap(1,5,2,1), cap(0,6,2,1), cap(1,7,2,1) ]},
+  'h': { width:4, caps:[ cap(0,0,2,6), cap(2,2,2,1), cap(3,3,1,3) ]},
+  'i': { width:2, caps:[ cap(0,2,2,4), cap(0,0,2,1) ]},
+  'j': { width:3, caps:[ cap(1,2,2,5), cap(0,6,2,1), cap(1,0,2,1) ]},
+  'k': { width:4, caps:[ cap(0,0,2,6), cap(3,2,1,1), cap(2,3,2,1), cap(3,4,1,2) ]},
+  'l': { width:2, caps:[ cap(0,0,2,6) ]},
+  'm': { width:6, caps:[ cap(0,2,2,4), cap(2,2,2,4), cap(4,2,2,4), cap(1,2,1,1), cap(3,2,1,1) ]},
+  'n': { width:4, caps:[ cap(0,2,2,4), cap(2,2,2,1), cap(3,3,1,3) ]},
+  'o': { width:4, caps:[ cap(0,3,2,2), cap(3,3,1,2), cap(1,2,3,1), cap(1,5,3,1) ]},
+  'p': { width:4, caps:[ cap(0,2,2,6), cap(2,2,2,1), cap(3,3,1,2), cap(2,5,2,1) ]},
+  'q': { width:4, caps:[ cap(2,2,2,6), cap(0,2,2,1), cap(0,3,1,2), cap(0,5,2,1) ]},
+  'r': { width:3, caps:[ cap(0,2,2,4), cap(2,2,1,1), cap(1,2,1,1) ]},
+  's': { width:4, caps:[ cap(1,2,3,1), cap(0,2,2,1), cap(1,3,2,1), cap(3,4,1,1), cap(0,5,3,1) ]},
+  't': { width:4, caps:[ cap(1,0,2,6), cap(0,2,4,1), cap(2,5,2,1) ]},
+  'u': { width:4, caps:[ cap(0,2,2,3), cap(3,2,1,4), cap(1,5,2,1) ]},
+  'v': { width:4, caps:[ cap(0,2,2,3), cap(3,2,2,3), cap(1,4,3,1), cap(2,5,1,1) ]},
+  'w': { width:6, caps:[ cap(0,2,2,4), cap(4,2,2,4), cap(2,3,1,3), cap(3,3,1,3) ]},
+  'x': { width:4, caps:[ cap(0,2,2,1), cap(3,2,1,1), cap(2,3,1,1), cap(1,3,1,1), cap(0,4,2,1), cap(3,4,1,2) ]},
+  'y': { width:4, caps:[ cap(0,2,2,3), cap(3,2,1,5), cap(1,5,2,1), cap(0,6,2,1), cap(1,7,2,1) ]},
+  'z': { width:4, caps:[ cap(0,2,4,1), cap(2,3,1,1), cap(1,4,1,1), cap(0,5,4,1) ]},
+
+  // ===== 数字 =====
+  '0': { width:5, caps:[ cap(0,1,2,4), cap(3,1,2,4), cap(1,0,3,1), cap(1,5,3,1) ]},
+  '1': { width:4, caps:[ cap(1,0,2,6), cap(0,1,1,1), cap(0,5,4,1) ]},
+  '2': { width:5, caps:[ cap(1,0,3,1), cap(3,1,2,1), cap(2,2,2,1), cap(1,3,2,1), cap(0,4,2,1), cap(0,5,5,1) ]},
+  '3': { width:5, caps:[ cap(1,0,3,1), cap(3,1,2,2), cap(2,2,2,1), cap(3,3,2,2), cap(1,5,3,1), cap(0,1,1,1) ]},
+  '4': { width:5, caps:[ cap(0,0,2,3), cap(3,0,2,6), cap(0,3,4,1) ]},
+  '5': { width:5, caps:[ cap(0,0,5,1), cap(0,1,2,2), cap(1,2,3,1), cap(3,3,2,2), cap(1,5,3,1) ]},
+  '6': { width:5, caps:[ cap(0,1,2,4), cap(1,0,3,1), cap(1,2,3,1), cap(3,3,2,2), cap(1,5,3,1) ]},
+  '7': { width:5, caps:[ cap(0,0,5,1), cap(3,1,2,2), cap(2,3,2,3) ]},
+  '8': { width:5, caps:[ cap(0,1,2,1), cap(3,1,2,1), cap(1,0,3,1), cap(1,2,3,1), cap(0,3,2,2), cap(3,3,2,2), cap(1,5,3,1) ]},
+  '9': { width:5, caps:[ cap(0,1,2,2), cap(3,1,2,4), cap(1,0,3,1), cap(1,2,3,1), cap(1,5,3,1) ]},
+
+  // ===== 标点 =====
+  '.': { width:2, caps:[ cap(0,4,2,2) ]},
+  ',': { width:2, caps:[ cap(0,4,2,2), cap(0,6,1,1) ]},
+  '!': { width:2, caps:[ cap(0,0,2,4), cap(0,5,2,1) ]},
+  '?': { width:4, caps:[ cap(1,0,2,1), cap(3,1,1,1), cap(2,2,1,1), cap(1,3,1,1), cap(1,5,1,1) ]},
+  ':': { width:2, caps:[ cap(0,2,2,1), cap(0,4,2,1) ]},
+  ';': { width:2, caps:[ cap(0,2,2,1), cap(0,4,2,2) ]},
+  "'": { width:2, caps:[ cap(0,0,2,2) ]},
+  '"': { width:4, caps:[ cap(0,0,1,2), cap(2,0,1,2) ]},
+  '-': { width:4, caps:[ cap(0,3,4,1) ]},
+  '+': { width:4, caps:[ cap(1,2,2,3), cap(0,3,4,1) ]},
+  '=': { width:4, caps:[ cap(0,2,4,1), cap(0,4,4,1) ]},
+  '(': { width:2, caps:[ cap(1,0,1,1), cap(0,1,2,4), cap(1,5,1,1) ]},
+  ')': { width:2, caps:[ cap(0,0,1,1), cap(0,1,2,4), cap(0,5,1,1) ]},
+  '/': { width:4, caps:[ cap(3,0,1,2), cap(2,2,1,1), cap(1,3,1,1), cap(0,4,1,2) ]},
+  '&': { width:5, caps:[ cap(1,0,2,1), cap(0,1,2,1), cap(1,2,2,1), cap(0,3,2,2), cap(3,3,2,2), cap(1,5,3,1) ]},
+  '#': { width:5, caps:[ cap(1,0,1,6), cap(3,0,1,6), cap(0,2,5,1), cap(0,4,5,1) ]},
+  '@': { width:5, caps:[ cap(0,1,2,4), cap(3,1,2,4), cap(1,0,3,1), cap(1,5,3,1), cap(2,2,1,2) ]},
+  '*': { width:4, caps:[ cap(1,1,2,3), cap(0,2,4,1) ]},
+  ' ': { width:2, caps:[] },
+};
+
+function getGlyph(ch){ return GLYPHS[ch] || {width:3,caps:[cap(1,2,1,2)]}; }
+
+// ===== 装饰图案 =====
+const DECORATIONS = {
+  flower:(s,c)=>{const cx=s/2,cy=s/2,pr=s*0.18,pd=s*0.22;let p='';for(let i=0;i<6;i++){const a=(i*60-90)*Math.PI/180;p+=`<ellipse cx="${cx+Math.cos(a)*pd}" cy="${cy+Math.sin(a)*pd}" rx="${pr}" ry="${pr*0.7}" fill="${c}" transform="rotate(${i*60},${cx+Math.cos(a)*pd},${cy+Math.sin(a)*pd})"/>`;}return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">${p}<circle cx="${cx}" cy="${cy}" r="${s*0.12}" fill="${c}" opacity="0.5"/></svg>`;},
+  star:(s,c)=>{const cx=s/2,cy=s/2,oR=s*0.46,iR=s*0.2;let pts=[];for(let i=0;i<10;i++){const r=i%2===0?oR:iR,a=(i*36-90)*Math.PI/180;pts.push(`${cx+Math.cos(a)*r},${cy+Math.sin(a)*r}`);}return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><polygon points="${pts.join(' ')}" fill="${c}"/></svg>`;},
+  heart:(s,c)=>`<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><path d="M${s/2} ${s*0.82} C${s*0.12} ${s*0.52},${s*0.06} ${s*0.16},${s*0.3} ${s*0.1} C${s*0.44} ${s*0.04},${s/2} ${s*0.2},${s/2} ${s*0.28} C${s/2} ${s*0.2},${s*0.56} ${s*0.04},${s*0.7} ${s*0.1} C${s*0.94} ${s*0.16},${s*0.88} ${s*0.52},${s/2} ${s*0.82}Z" fill="${c}"/></svg>`,
+  moon:(s,c)=>{const id='m'+Math.random().toString(36).slice(2,7);const cx=s/2,cy=s/2,r=s*0.4;return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><defs><mask id="${id}"><rect width="${s}" height="${s}" fill="black"/><circle cx="${cx-s*0.08}" cy="${cy}" r="${r}" fill="white"/><circle cx="${cx+s*0.16}" cy="${cy-s*0.06}" r="${r*0.92}" fill="black"/></mask></defs><rect width="${s}" height="${s}" fill="${c}" mask="url(#${id})"/></svg>`;},
+  sparkle:(s,c)=>{const cx=s/2,cy=s/2,r1=s*0.48,r2=s*0.12;return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><path d="M${cx} ${cy-r1} Q${cx+r2} ${cy-r2} ${cx+r1} ${cy} Q${cx+r2} ${cy+r2} ${cx} ${cy+r1} Q${cx-r2} ${cy+r2} ${cx-r1} ${cy} Q${cx-r2} ${cy-r2} ${cx} ${cy-r1}Z" fill="${c}"/></svg>`;},
+  leaf:(s,c)=>`<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><path d="M${s*0.22} ${s*0.82} Q${s*0.16} ${s*0.38},${s*0.5} ${s*0.12} Q${s*0.84} ${s*0.38},${s*0.78} ${s*0.82} Q${s*0.5} ${s*0.68},${s*0.22} ${s*0.82}Z" fill="${c}"/></svg>`,
+  diamond:(s,c)=>{const cx=s/2,cy=s/2,rx=s*0.38,ry=s*0.46;return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><polygon points="${cx},${cy-ry} ${cx+rx},${cy} ${cx},${cy+ry} ${cx-rx},${cy}" fill="${c}"/></svg>`;},
+  dot:(s,c)=>`<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><circle cx="${s/2}" cy="${s/2}" r="${s*0.28}" fill="${c}"/></svg>`,
+  ring:(s,c)=>`<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><circle cx="${s/2}" cy="${s/2}" r="${s*0.36}" fill="none" stroke="${c}" stroke-width="${s*0.1}"/></svg>`,
+  cross:(s,c)=>{const cx=s/2,w=s*0.14,l=s*0.38;return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><rect x="${cx-w/2}" y="${cx-l}" width="${w}" height="${l*2}" rx="${w/2}" fill="${c}"/><rect x="${cx-l}" y="${cx-w/2}" width="${l*2}" height="${w}" rx="${w/2}" fill="${c}"/></svg>`;},
+  sun:(s,c)=>{const cx=s/2,cy=s/2;let rays='';for(let i=0;i<8;i++){const a=i*45*Math.PI/180;rays+=`<rect x="${cx-s*0.03}" y="${cy-s*0.48}" width="${s*0.06}" height="${s*0.14}" rx="${s*0.03}" fill="${c}" transform="rotate(${i*45},${cx},${cy})"/>`;}return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">${rays}<circle cx="${cx}" cy="${cy}" r="${s*0.22}" fill="${c}"/></svg>`;},
+  cloud:(s,c)=>`<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><circle cx="${s*0.35}" cy="${s*0.55}" r="${s*0.18}" fill="${c}"/><circle cx="${s*0.55}" cy="${s*0.45}" r="${s*0.22}" fill="${c}"/><circle cx="${s*0.7}" cy="${s*0.58}" r="${s*0.16}" fill="${c}"/><rect x="${s*0.33}" y="${s*0.58}" width="${s*0.4}" height="${s*0.16}" rx="${s*0.08}" fill="${c}"/></svg>`,
+  bubble:(s,c)=>`<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><circle cx="${s*0.45}" cy="${s*0.45}" r="${s*0.32}" fill="none" stroke="${c}" stroke-width="${s*0.07}"/><circle cx="${s*0.72}" cy="${s*0.72}" r="${s*0.12}" fill="none" stroke="${c}" stroke-width="${s*0.06}"/></svg>`,
+  wave:(s,c)=>`<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><path d="M${s*0.08} ${s*0.5} Q${s*0.27} ${s*0.28},${s*0.46} ${s*0.5} T${s*0.84} ${s*0.5}" fill="none" stroke="${c}" stroke-width="${s*0.1}" stroke-linecap="round"/><path d="M${s*0.08} ${s*0.72} Q${s*0.27} ${s*0.5},${s*0.46} ${s*0.72} T${s*0.84} ${s*0.72}" fill="none" stroke="${c}" stroke-width="${s*0.1}" stroke-linecap="round"/></svg>`,
+  butterfly:(s,c)=>{const cx=s/2,cy=s/2;return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><ellipse cx="${cx-s*0.18}" cy="${cy-s*0.12}" rx="${s*0.17}" ry="${s*0.2}" fill="${c}"/><ellipse cx="${cx+s*0.18}" cy="${cy-s*0.12}" rx="${s*0.17}" ry="${s*0.2}" fill="${c}"/><ellipse cx="${cx-s*0.15}" cy="${cy+s*0.18}" rx="${s*0.13}" ry="${s*0.15}" fill="${c}"/><ellipse cx="${cx+s*0.15}" cy="${cy+s*0.18}" rx="${s*0.13}" ry="${s*0.15}" fill="${c}"/><rect x="${cx-s*0.025}" y="${cy-s*0.28}" width="${s*0.05}" height="${s*0.55}" rx="${s*0.025}" fill="${c}"/></svg>`;},
+};
+function renderDecorationSVG(name,size,color){const fn=DECORATIONS[name];return fn?fn(size,color):'';}
+
+</script>
+<script>
+const COLORS = [
+  '#D4537E','#993556','#ED93B1',
+  '#7F77DD','#534AB7','#AFA9EC',
+  '#378ADD','#185FA5','#85B7EB',
+  '#1D9E75','#0F6E56','#5DCAA5',
+  '#D85A30','#993C1D','#F0997B',
+  '#BA7517','#854F0B','#FAC775',
+  '#222222','#666666','#aaaaaa',
+];
+const BG_COLORS = [
+  '#ffffff','#fafafa','#f5f5f5',
+  '#fdf2f5','#f0edf8','#e6f1fb','#e1f5ee','#faeeda',
+  '#2c2c2a','#1a1a2e','#0f172a','#0a2540',
+];
+const DECO_LIST = [
+  {name:'flower',label:'花朵'},{name:'star',label:'星星'},
+  {name:'heart',label:'爱心'},{name:'moon',label:'月亮'},
+  {name:'sparkle',label:'闪光'},{name:'leaf',label:'叶子'},
+  {name:'diamond',label:'菱形'},{name:'dot',label:'圆点'},
+  {name:'ring',label:'圆环'},{name:'cross',label:'十字'},
+  {name:'sun',label:'太阳'},{name:'cloud',label:'云朵'},
+  {name:'bubble',label:'泡泡'},{name:'wave',label:'水波'},
+  {name:'butterfly',label:'蝴蝶'},
+];
+
+const state = {
+  text:'LUNE', fontSize:52, letterGap:4,
+  jitter:0, scaleJitter:0, layout:'flow',
+  color:COLORS[0], bg:BG_COLORS[0], seed:1,
+  decorations:[],
+  freePos:{}, // 自由模式下每个元素的位置 {key: {x, y}}
+};
+
+function buildSequence() {
+  return Array.from(state.text).map(ch=>({type:'char',value:ch}))
+    .concat(state.decorations.map(d=>({type:'deco',name:d.name,id:d.id})));
+}
+
+function pillPath(x,y,w,h,r) {
+  r=Math.min(r,w/2,h/2);
+  return `M${x+r},${y} L${x+w-r},${y} Q${x+w},${y} ${x+w},${y+r} L${x+w},${y+h-r} Q${x+w},${y+h} ${x+w-r},${y+h} L${x+r},${y+h} Q${x},${y+h} ${x},${y+h-r} L${x},${y+r} Q${x},${y} ${x+r},${y} Z`;
+}
+
+function renderGlyphSVG(ch, size, color) {
+  const glyph=getGlyph(ch);
+  const unit=size/GRID;
+  const gw=glyph.width*unit;
+  const gh=GRID*unit;
+  let paths='';
+  glyph.caps.forEach(c=>{
+    const x=c.col*unit, y=c.row*unit, w=c.w*unit, h=c.h*unit;
+    const radius=Math.min(w,h)*0.5;
+    paths+=`<path d="${pillPath(x,y,w,h,radius)}" fill="${color}"/>`;
+  });
+  return `<svg width="${gw}" height="${gh}" viewBox="0 0 ${gw} ${gh}">${paths}</svg>`;
+}
+
+function renderItemSVG(item,size,color) {
+  return item.type==='deco' ? renderDecorationSVG(item.name,size,color) : renderGlyphSVG(item.value,size,color);
+}
+
+function mulberry32(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+function buildStage(){
+  const stage=document.getElementById('stage');
+  stage.className='layout-'+state.layout;
+  stage.style.setProperty('--gap',state.letterGap+'px');
+  stage.innerHTML='';
+  const seq=buildSequence();
+  const rand=mulberry32(state.seed);
+
+  if(state.layout==='flow'||state.layout==='stack'){
+    seq.forEach(item=>{
+      const wrap=document.createElement('span');
+      wrap.className='glyph';
+      let size=state.fontSize;
+      if(item.type==='deco')size*=0.82;
+      if(state.scaleJitter>0)size*=(1+(rand()-0.5)*state.scaleJitter/100);
+      wrap.innerHTML=renderItemSVG(item,size,state.color);
+      let rot=state.jitter>0?(rand()-0.5)*2*state.jitter:0;
+      wrap.style.transform=`rotate(${rot}deg)`;
+      wrap.style.margin=`0 ${state.letterGap/2}px`;
+      stage.appendChild(wrap);
+    });
+  } else if(state.layout==='arc'){
+    const n=seq.length, radius=Math.max(160,n*24), totalAngle=Math.min(150,n*18), startAngle=-totalAngle/2;
+    stage.style.width='100%';
+    seq.forEach((item,i)=>{
+      const angle=n>1?startAngle+totalAngle*i/(n-1):0;
+      const rad=angle*Math.PI/180;
+      const x=50+Math.sin(rad)*(radius/4.5);
+      const y=160-Math.cos(rad)*(radius/4.5);
+      const wrap=document.createElement('span');
+      wrap.className='glyph';
+      wrap.style.cssText=`position:absolute;left:calc(${x}% - 24px);top:${y}px;transform:rotate(${angle}deg);transform-origin:center;`;
+      let size=state.fontSize;
+      if(item.type==='deco')size*=0.82;
+      if(state.scaleJitter>0)size*=(1+(rand()-0.5)*state.scaleJitter/100);
+      wrap.innerHTML=renderItemSVG(item,size,state.color);
+      stage.appendChild(wrap);
+    });
+  } else if(state.layout==='circle'){
+    const n=seq.length, radius=Math.max(100,n*16);
+    stage.style.width='100%';
+    seq.forEach((item,i)=>{
+      const angle=(360*i/n)-90, rad=angle*Math.PI/180;
+      const cx=50, cy=170;
+      const x=cx+Math.cos(rad)*(radius/3.5);
+      const y=cy+Math.sin(rad)*(radius/3.5);
+      const wrap=document.createElement('span');
+      wrap.className='glyph';
+      wrap.style.cssText=`position:absolute;left:calc(${x}% - 24px);top:${y}px;transform:rotate(${angle+90}deg);`;
+      let size=state.fontSize*0.78;
+      if(item.type==='deco')size*=0.85;
+      if(state.scaleJitter>0)size*=(1+(rand()-0.5)*state.scaleJitter/100);
+      wrap.innerHTML=renderItemSVG(item,size,state.color);
+      stage.appendChild(wrap);
+    });
+  } else if(state.layout==='wave'){
+    const n=seq.length, spacing=Math.min(88/Math.max(n,1),13);
+    stage.style.width='100%';
+    seq.forEach((item,i)=>{
+      const x=6+i*spacing;
+      const y=150+Math.sin(i*0.65)*50;
+      const wrap=document.createElement('span');
+      wrap.className='glyph';
+      wrap.style.cssText=`position:absolute;left:${x}%;top:${y}px;transform:rotate(${Math.cos(i*0.65)*14}deg);`;
+      let size=state.fontSize;
+      if(item.type==='deco')size*=0.82;
+      if(state.scaleJitter>0)size*=(1+(rand()-0.5)*state.scaleJitter/100);
+      wrap.innerHTML=renderItemSVG(item,size,state.color);
+      stage.appendChild(wrap);
+    });
+  } else if(state.layout==='scatter'){
+    stage.style.width='100%';
+    seq.forEach(item=>{
+      const x=4+rand()*82, y=5+rand()*78, rot=(rand()-0.5)*55;
+      const wrap=document.createElement('span');
+      wrap.className='glyph';
+      wrap.style.cssText=`position:absolute;left:${x}%;top:${y}%;transform:rotate(${rot}deg);`;
+      let size=state.fontSize*(0.65+rand()*0.7);
+      wrap.innerHTML=renderItemSVG(item,size,state.color);
+      stage.appendChild(wrap);
+    });
+  } else if(state.layout==='free'){
+    stage.style.width='100%';
+    const stageW=stage.clientWidth||600;
+    seq.forEach((item,i)=>{
+      const key=item.type==='deco'?('d'+item.id):('c'+i);
+      let pos=state.freePos[key];
+      if(!pos){
+        // 初始沿中线水平排开
+        const startX=Math.max(20, stageW/2 - seq.length*state.fontSize*0.3);
+        pos={x:startX + i*(state.fontSize*0.6), y:150};
+        state.freePos[key]=pos;
+      }
+      const wrap=document.createElement('span');
+      wrap.className='glyph';
+      wrap.dataset.key=key;
+      wrap.style.cssText=`position:absolute;left:${pos.x}px;top:${pos.y}px;`;
+      let size=state.fontSize;
+      if(item.type==='deco')size*=0.85;
+      wrap.innerHTML=renderItemSVG(item,size,state.color);
+      makeDraggable(wrap, key);
+      stage.appendChild(wrap);
+    });
+  }
+}
+
+function makeDraggable(el, key){
+  let startX, startY, origX, origY, dragging=false;
+  function down(e){
+    dragging=true;
+    el.classList.add('dragging');
+    const pt=e.touches?e.touches[0]:e;
+    startX=pt.clientX; startY=pt.clientY;
+    origX=parseFloat(el.style.left); origY=parseFloat(el.style.top);
+    e.preventDefault();
+  }
+  function move(e){
+    if(!dragging)return;
+    const pt=e.touches?e.touches[0]:e;
+    const nx=origX+(pt.clientX-startX);
+    const ny=origY+(pt.clientY-startY);
+    el.style.left=nx+'px';
+    el.style.top=ny+'px';
+    state.freePos[key]={x:nx, y:ny};
+    e.preventDefault();
+  }
+  function up(){ dragging=false; el.classList.remove('dragging'); }
+  el.addEventListener('mousedown', down);
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+  el.addEventListener('touchstart', down, {passive:false});
+  document.addEventListener('touchmove', move, {passive:false});
+  document.addEventListener('touchend', up);
+}
+
+function renderDecoChips(){
+  const w=document.getElementById('decoChips');
+  w.innerHTML='';
+  state.decorations.forEach(d=>{
+    const lbl=(DECO_LIST.find(x=>x.name===d.name)||{}).label||d.name;
+    const chip=document.createElement('span');
+    chip.className='deco-chip';
+    chip.innerHTML=`${renderDecorationSVG(d.name,16,state.color)}<span>${lbl}</span><span class="rm">×</span>`;
+    chip.querySelector('.rm').onclick=()=>{state.decorations=state.decorations.filter(x=>x.id!==d.id);renderDecoChips();buildStage();};
+    w.appendChild(chip);
+  });
+}
+
+function init(){
+  const textInput=document.getElementById('textInput');
+  const sizeSlider=document.getElementById('sizeSlider');
+  const gapSlider=document.getElementById('gapSlider');
+  const jitterSlider=document.getElementById('jitterSlider');
+  const scaleJitterSlider=document.getElementById('scaleJitterSlider');
+  const canvasPanel=document.getElementById('canvasPanel');
+
+  textInput.addEventListener('input',()=>{state.text=textInput.value;buildStage();});
+  sizeSlider.addEventListener('input',e=>{state.fontSize=+e.target.value;document.getElementById('sizeVal').textContent=state.fontSize;buildStage();});
+  gapSlider.addEventListener('input',e=>{state.letterGap=+e.target.value;document.getElementById('gapVal').textContent=state.letterGap;buildStage();});
+  jitterSlider.addEventListener('input',e=>{state.jitter=+e.target.value;document.getElementById('jitterVal').textContent=state.jitter;buildStage();});
+  scaleJitterSlider.addEventListener('input',e=>{state.scaleJitter=+e.target.value;document.getElementById('scaleJitterVal').textContent=state.scaleJitter;buildStage();});
+
+  document.querySelectorAll('.layout-pill').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.layout-pill').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active'); state.layout=b.dataset.layout;
+      const hint=document.getElementById('freeHint');
+      if(hint) hint.style.display = state.layout==='free' ? 'block' : 'none';
+      buildStage();
+    });
+  });
+
+  const colorSwatches=document.getElementById('colorSwatches');
+  COLORS.forEach((c,i)=>{
+    const el=document.createElement('div');
+    el.className='swatch'+(i===0?' active':'');
+    el.style.background=c;
+    el.onclick=()=>{
+      document.querySelectorAll('#colorSwatches .swatch').forEach(s=>s.classList.remove('active'));
+      el.classList.add('active'); state.color=c;
+      document.querySelectorAll('.deco-item').forEach((item,idx)=>{
+        if(DECO_LIST[idx])item.innerHTML=renderDecorationSVG(DECO_LIST[idx].name,28,state.color);
+      });
+      renderDecoChips(); buildStage();
+    };
+    colorSwatches.appendChild(el);
+  });
+
+  const bgSwatches=document.getElementById('bgSwatches');
+  BG_COLORS.forEach((c,i)=>{
+    const el=document.createElement('div');
+    el.className='swatch'+(i===0?' active':'');
+    el.style.background=c;
+    el.style.boxShadow='0 0 0 1px rgba(0,0,0,0.1) inset';
+    el.onclick=()=>{
+      document.querySelectorAll('#bgSwatches .swatch').forEach(s=>s.classList.remove('active'));
+      el.classList.add('active'); state.bg=c; canvasPanel.style.setProperty('--stage-bg',c); buildStage();
+    };
+    bgSwatches.appendChild(el);
+  });
+
+  const decoGrid=document.getElementById('decoGrid');
+  DECO_LIST.forEach(d=>{
+    const item=document.createElement('div');
+    item.className='deco-item';
+    item.title=d.label;
+    item.innerHTML=renderDecorationSVG(d.name,28,state.color);
+    item.onclick=()=>{state.decorations.push({id:Date.now()+Math.random(),name:d.name});renderDecoChips();buildStage();};
+    decoGrid.appendChild(item);
+  });
+
+  document.getElementById('shuffleBtn').onclick=()=>{
+    state.seed=Math.floor(Math.random()*99999);
+    const layouts=['flow','arc','circle','wave','scatter'];
+    state.layout=layouts[Math.floor(Math.random()*layouts.length)];
+    document.querySelectorAll('.layout-pill').forEach(b=>b.classList.toggle('active',b.dataset.layout===state.layout));
+    state.jitter=Math.floor(Math.random()*18);
+    jitterSlider.value=state.jitter; document.getElementById('jitterVal').textContent=state.jitter;
+    buildStage();
+  };
+
+  document.getElementById('resetBtn').onclick=()=>{
+    state.fontSize=52;sizeSlider.value=52;document.getElementById('sizeVal').textContent=52;
+    state.letterGap=4;gapSlider.value=4;document.getElementById('gapVal').textContent=4;
+    state.jitter=0;jitterSlider.value=0;document.getElementById('jitterVal').textContent=0;
+    state.scaleJitter=0;scaleJitterSlider.value=0;document.getElementById('scaleJitterVal').textContent=0;
+    state.layout='flow';
+    document.querySelectorAll('.layout-pill').forEach(b=>b.classList.toggle('active',b.dataset.layout==='flow'));
+    state.decorations=[];state.freePos={};renderDecoChips();buildStage();
+  };
+
+  document.getElementById('downloadBtn').onclick=downloadImage;
+
+  canvasPanel.style.setProperty('--stage-bg',state.bg);
+  renderDecoChips();
+  buildStage();
+}
+
+function downloadImage(){
+  const panel=document.getElementById('canvasPanel');
+  const panelRect=panel.getBoundingClientRect();
+  const glyphs=document.querySelectorAll('#stage .glyph');
+  const svgNS='http://www.w3.org/2000/svg';
+  const width=Math.max(panelRect.width,400), height=Math.max(panelRect.height,300);
+  let innerSVGs='';
+  glyphs.forEach(el=>{
+    const svg=el.querySelector('svg');
+    if(!svg)return;
+    const elRect=el.getBoundingClientRect();
+    const ox=elRect.left-panelRect.left, oy=elRect.top-panelRect.top;
+    const tm=el.style.transform||'';
+    const rm=tm.match(/rotate\(([-\d.]+)deg\)/);
+    const rot=rm?parseFloat(rm[1]):0;
+    const w=parseFloat(svg.getAttribute('width')), h=parseFloat(svg.getAttribute('height'));
+    innerSVGs+=`<g transform="translate(${ox},${oy}) rotate(${rot},${w/2},${h/2})">${svg.innerHTML}</g>`;
+  });
+  const full=`<svg xmlns="${svgNS}" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="${state.bg}"/>${innerSVGs}</svg>`;
+  const canvas=document.createElement('canvas');
+  const scale=2;
+  canvas.width=width*scale; canvas.height=height*scale;
+  const ctx=canvas.getContext('2d');
+  const img=new Image();
+  const blob=new Blob([full],{type:'image/svg+xml;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  img.onload=function(){ctx.scale(scale,scale);ctx.drawImage(img,0,0,width,height);URL.revokeObjectURL(url);
+    canvas.toBlob(function(b){const a=document.createElement('a');a.download=`font_workshop_${Date.now()}.png`;a.href=URL.createObjectURL(b);a.click();});};
+  img.onerror=function(){alert('导出失败');URL.revokeObjectURL(url);};
+  img.src=url;
+}
+
+window.addEventListener('DOMContentLoaded',init);
+
+</script>
+</body>
+</html>
